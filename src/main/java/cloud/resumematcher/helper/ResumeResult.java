@@ -1,4 +1,4 @@
-package cloud.resumematcher.helper;
+package cloud.resumematcher.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,4 +15,3 @@ public class ResumeResult {
     private int matchScore;
     private List<String> suggestions;
 }
-

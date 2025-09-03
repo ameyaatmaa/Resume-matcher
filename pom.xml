@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.5</version> <!-- ⚠️ 3.5.5 does not exist yet, use latest stable -->
+        <version>3.2.5</version>
         <relativePath/>
     </parent>
 
@@ -21,24 +21,71 @@
         <java.version>21</java.version>
     </properties>
 
-    <!-- Dependency Management for AWS SDK -->
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>software.amazon.awssdk</groupId>
-                <artifactId>bom</artifactId>
-                <version>2.25.20</version> <!-- latest stable -->
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
         <!-- Spring Boot Starter Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Data JPA (for H2 or Cosmos DB integration) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- H2 Database (for local testing / fallback) -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Apache Tika for resume text extraction -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>2.9.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-parsers-standard-package</artifactId>
+            <version>2.9.0</version>
+        </dependency>
+
+        <!-- Commons Text for keyword matching -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>1.12.0</version>
+        </dependency>
+
+        <!-- Azure Blob Storage -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-storage-blob</artifactId>
+            <version>12.25.0</version>
+        </dependency>
+
+        <!-- Azure Form Recognizer -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-ai-formrecognizer</artifactId>
+            <version>4.1.7</version>
+        </dependency>
+
+        <!-- Azure Text Analytics -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-ai-textanalytics</artifactId>
+            <version>5.3.0</version>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
 
         <!-- DevTools -->
@@ -49,40 +96,11 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Spring Boot Test -->
+        <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
-        </dependency>
-
-        <!-- AWS SDK Clients -->
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>textract</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>comprehend</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>dynamodb</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>s3</artifactId>
-        </dependency>
-
-        <!-- JSON (Spring Boot already includes Jackson, optional) -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>annotationProcessor</scope>
         </dependency>
     </dependencies>
 

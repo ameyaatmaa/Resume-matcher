@@ -1,15 +1,15 @@
-package cloud.resumematcher.services;
+package cloud.resumematcher.service;
 
-import cloud.resumematcher.helper.ResumeResult;
+import cloud.resumematcher.model.ResumeResult;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.services.comprehend.model.Entity;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class JobMatchService {
 
-    public ResumeResult matchJobs(String userId, String resumeText, List<Entity> entities) {
+    public ResumeResult matchJobs(String userId, String resumeText) {
         int score = 0;
         List<String> suggestions = new ArrayList<>();
 
@@ -17,7 +17,7 @@ public class JobMatchService {
             score += 30;
             suggestions.add("Java Developer");
         }
-        if (resumeText.toLowerCase().contains("aws")) {
+        if (resumeText.toLowerCase().contains("azure")) {
             score += 30;
             suggestions.add("Cloud Engineer");
         }

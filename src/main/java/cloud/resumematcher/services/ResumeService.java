@@ -1,16 +1,17 @@
-package cloud.resumematcher.service;
+package cloud.resumematcher.services;
 
-import cloud.resumematcher.model.ResumeResult;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
+import cloud.resumematcher.helper.ResumeResult;
+import com.azure.ai.formrecognizer.documentanalysis.DocumentAnalysisClient;
 import com.azure.ai.formrecognizer.documentanalysis.DocumentAnalysisClientBuilder;
-import com.azure.ai.formrecognizer.documentanalysis.models.AnalyzeDocumentOptions;
 import com.azure.ai.formrecognizer.documentanalysis.models.AnalyzeResult;
 import com.azure.ai.formrecognizer.documentanalysis.models.DocumentPage;
 import com.azure.core.credential.AzureKeyCredential;
+import com.azure.core.util.BinaryData;
+import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobClientBuilder;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,58 +19,67 @@ import java.util.List;
 @Service
 public class ResumeService {
 
-    @Autowired
-    private JobMatchService jobMatchService;
+    private final JobMatchService jobMatchService;
+    private final String storageConnectionString;
+    private final String containerName;
+    private final String formRecognizerKey;
+    private final String formRecognizerEndpoint;
 
-    private final String storageConnectionString = "<YOUR_BLOB_CONNECTION_STRING>";
-    private final String containerName = "resumes";
+    public ResumeService(JobMatchService jobMatchService,
+                         @Value("${AZURE_STORAGE_CONNECTION_STRING:${azure.storage.connection-string:}}") String storageConnectionString,
+                         @Value("${AZURE_BLOB_CONTAINER:${azure.blob.container:resumes}}") String containerName,
+                         @Value("${FORM_RECOGNIZER_KEY:${form.recognizer.key:}}") String formRecognizerKey,
+                         @Value("${FORM_RECOGNIZER_ENDPOINT:${form.recognizer.endpoint:}}") String formRecognizerEndpoint) {
+        this.jobMatchService = jobMatchService;
+        this.storageConnectionString = storageConnectionString;
+        this.containerName = containerName == null || containerName.isBlank() ? "resumes" : containerName;
+        this.formRecognizerKey = formRecognizerKey;
+        this.formRecognizerEndpoint = formRecognizerEndpoint;
+    }
 
-    private final String formRecognizerKey = "<FORM_RECOGNIZER_KEY>";
-    private final String formRecognizerEndpoint = "<FORM_RECOGNIZER_ENDPOINT>";
-
-    public String processResume(MultipartFile file, String userId) {
+    public ResumeResult processResume(MultipartFile file, String userId) {
         try {
-            // 1. Upload to Azure Blob
-            String blobName = userId + "-" + file.getOriginalFilename();
-            new BlobClientBuilder()
+            String blobName = userId + "-" + System.currentTimeMillis() + "-" + file.getOriginalFilename();
+            BlobClient blobClient = new BlobClientBuilder()
                     .connectionString(storageConnectionString)
                     .containerName(containerName)
                     .blobName(blobName)
-                    .buildClient()
-                    .upload(file.getInputStream(), file.getSize(), true);
+                    .buildClient();
+            blobClient.upload(file.getInputStream(), file.getSize(), true);
 
-            // 2. Extract text with Form Recognizer
-            var client = new DocumentAnalysisClientBuilder()
+            DocumentAnalysisClient diClient = new DocumentAnalysisClientBuilder()
                     .credential(new AzureKeyCredential(formRecognizerKey))
                     .endpoint(formRecognizerEndpoint)
                     .buildClient();
 
-            AnalyzeResult result = client.beginAnalyzeDocumentFromUrl("prebuilt-read",
-                    "https://<your-storage-account>.blob.core.windows.net/" + containerName + "/" + blobName,
-                    new AnalyzeDocumentOptions()).getFinalResult();
+            AnalyzeResult result = diClient.beginAnalyzeDocument(
+                    "prebuilt-read",
+                    BinaryData.fromStream(file.getInputStream(), file.getSize())
+            ).getFinalResult();
 
             StringBuilder extractedText = new StringBuilder();
             for (DocumentPage page : result.getPages()) {
-                page.getLines().forEach(line -> extractedText.append(line.getContent()).append(" "));
+                page.getLines().forEach(l -> {
+                    extractedText.append(l.getContent());
+                    extractedText.append(" ");
+                });
             }
 
-            // 3. Match jobs
-            ResumeResult resumeResult = jobMatchService.matchJobs(userId, extractedText.toString());
-
-            // (Optional) Save to Cosmos DB here
-
-            return "Resume processed for " + userId;
+            return jobMatchService.matchJobs(userId, extractedText.toString());
 
         } catch (Exception e) {
-            throw new RuntimeException("Error: " + e.getMessage(), e);
+            throw new RuntimeException("processing_failed: " + e.getMessage(), e);
         }
     }
 
     public ResumeResult getResults(String userId) {
-        return new ResumeResult(userId, "sample text", 85, List.of("Java Developer", "Cloud Engineer"));
+        ResumeResult r = jobMatchService.getResult(userId);
+        if (r == null) return new ResumeResult(userId, "", 0, List.of());
+        return r;
     }
 
     public List<String> getJobSuggestions(String userId) {
-        return List.of("Backend Developer", "AI Engineer");
+        List<String> s = jobMatchService.getSuggestions(userId);
+        return s == null ? new ArrayList<>() : s;
     }
 }

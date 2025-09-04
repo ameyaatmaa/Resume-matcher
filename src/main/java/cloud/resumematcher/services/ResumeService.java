@@ -13,8 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class ResumeService {
@@ -60,12 +59,13 @@ public class ResumeService {
             StringBuilder extractedText = new StringBuilder();
             for (DocumentPage page : result.getPages()) {
                 page.getLines().forEach(l -> {
-                    extractedText.append(l.getContent());
-                    extractedText.append(" ");
+                    extractedText.append(l.getContent()).append(" ");
                 });
             }
 
-            return jobMatchService.matchJobs(userId, extractedText.toString());
+            Map<String, String> sections = parseSections(extractedText.toString());
+
+            return jobMatchService.matchJobs(userId, sections);
 
         } catch (Exception e) {
             throw new RuntimeException("processing_failed: " + e.getMessage(), e);
@@ -74,12 +74,42 @@ public class ResumeService {
 
     public ResumeResult getResults(String userId) {
         ResumeResult r = jobMatchService.getResult(userId);
-        if (r == null) return new ResumeResult(userId, "", 0, List.of());
+        if (r == null) {
+            Map<String, String> emptySections = new LinkedHashMap<>();
+            emptySections.put("SUMMARY", "");
+            emptySections.put("SKILLS", "");
+            emptySections.put("PROJECTS", "");
+            emptySections.put("EXPERIENCE", "");
+            emptySections.put("EDUCATION", "");
+            emptySections.put("CERTIFICATIONS", "");
+            return new ResumeResult(userId, emptySections, 0, List.of());
+        }
         return r;
     }
 
     public List<String> getJobSuggestions(String userId) {
         List<String> s = jobMatchService.getSuggestions(userId);
         return s == null ? new ArrayList<>() : s;
+    }
+
+    private Map<String, String> parseSections(String text) {
+        Map<String, String> sections = new LinkedHashMap<>();
+        String[] sectionNames = {"SUMMARY", "SKILLS", "PROJECTS", "EXPERIENCE", "EDUCATION", "CERTIFICATIONS"};
+
+        for (int i = 0; i < sectionNames.length; i++) {
+            String start = sectionNames[i];
+            String end = (i + 1 < sectionNames.length) ? sectionNames[i + 1] : null;
+
+            int startIdx = text.toUpperCase().indexOf(start);
+            if (startIdx != -1) {
+                int endIdx = (end != null) ? text.toUpperCase().indexOf(end, startIdx) : text.length();
+                if (endIdx == -1) endIdx = text.length();
+                String content = text.substring(startIdx + start.length(), endIdx).trim();
+                sections.put(start, content);
+            } else {
+                sections.put(start, "");
+            }
+        }
+        return sections;
     }
 }
